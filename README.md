@@ -1,14 +1,44 @@
-# ðŸ›¡ï¸ SaaS Auto CatÃ¡logo â€” Backoffice App (Super Admin)
+# SaaS Auto Catálogo — Backoffice App (Super Admin)
 
-Painel operacional exclusivo da equipe do SaaS para suporte ao cliente, governanÃ§a de tenants e observabilidade do ecossistema.
+Painel operacional exclusivo da equipe SaaS: suporte a clientes, governança de tenants, telemetria de feeds e moderação de conteúdo IA.
 
-## ðŸ› ï¸ Stack TecnolÃ³gica
-- **Framework**: Next.js 15 / React 19 + TypeScript
-- **UI & Componentes**: Tailwind CSS + Shadcn/UI
-- **SeguranÃ§a**: AutenticaÃ§Ã£o com 2FA obrigatÃ³rio e Role-Based Access Control (\SUPER_ADMIN\)
+**Wiki:** [backoffice-app](https://github.com/saas-auto-catalogo/.github/blob/main/docs/wiki/backoffice-app.md)
 
-## ðŸŽ¯ MÃ³dulos Operacionais
-- **GestÃ£o Global de Tenants**: Listagem de revendas, faturamento, status de planos e *Impersonation* com trilha de auditoria (\AuditLog\).
-- **Painel de Feeds XML**: Telemetria em tempo real de erros de parsing, feeds offline e disparo forÃ§ado de re-sync.
-- **Central de ModeraÃ§Ã£o do Blog**: Fila de aprovaÃ§Ã£o de artigos gerados por IA (Open Deep Research + Gemini).
-- **MÃ©tricas SaaS Globais**: MRR, ARR, Churn e total de veÃ­culos ativos no Meta.
+---
+
+## Stack
+
+- React 18 + TypeScript 5.7
+- Vite 6
+- Tailwind CSS 3.4 + Lucide Icons
+
+> O painel do **lojista** está no repositório `frontend-app`. Este app é apenas para usuários com role `SUPER_ADMIN`.
+
+---
+
+## Módulos planejados
+
+- **Gestão global de tenants** — workspaces, planos, faturamento, impersonation com audit log
+- **Painel de feeds XML** — erros de parsing, feeds offline, re-sync forçado
+- **Central de moderação do blog** — aprovação de artigos do `ai-content-worker`
+- **Métricas SaaS** — MRR, ARR, churn, veículos ativos no Meta
+
+---
+
+## Execução local
+
+```bash
+npm install
+npm run dev
+npm run typecheck
+npm run build
+```
+
+Consome a mesma `backend-api` com credenciais de Super Admin (criadas no seed do backend).
+
+---
+
+## Documentação
+
+- [Multi-tenancy e RBAC](https://github.com/saas-auto-catalogo/.github/blob/main/docs/specs/multi-tenancy-rbac-specification.md)
+- [backend-api wiki](https://github.com/saas-auto-catalogo/.github/blob/main/docs/wiki/backend-api.md)
