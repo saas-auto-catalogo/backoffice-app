@@ -11,6 +11,7 @@ import { FeedMonitoringTable } from './components/feeds/FeedMonitoringTable.js';
 import { FeedDiagnosticModal } from './components/feeds/FeedDiagnosticModal.js';
 import { BlogModerationQueue } from './components/blog-moderation/BlogModerationQueue.js';
 import { ArticleReviewEditorModal } from './components/blog-moderation/ArticleReviewEditorModal.js';
+import { SaaSFinancialsDashboard } from './components/financials/SaaSFinancialsDashboard.js';
 import { Card, CardHeader, CardContent } from './components/ui/Card.js';
 import { Badge } from './components/ui/Badge.js';
 import { Button } from './components/ui/Button.js';
@@ -30,9 +31,11 @@ import { tenantService } from './services/api/tenantService.js';
 import { auditLogService } from './services/api/auditLogService.js';
 import { feedMonitoringService } from './services/api/feedMonitoringService.js';
 import { blogModerationService } from './services/api/blogModerationService.js';
+import { saasMetricsService } from './services/api/saasMetricsService.js';
 import { Tenant, SaaSOverviewMetrics, AuditLog } from './types/backoffice.js';
 import { MonitoredFeed, FeedsTelemetryMetrics } from './types/feedMonitoring.js';
 import { BlogArticle, BlogModerationMetrics } from './types/blogModeration.js';
+import { SaaSFinancialMetrics } from './types/saasMetrics.js';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<string>('tenants');
@@ -43,6 +46,7 @@ export function App() {
   const [feedsTelemetry, setFeedsTelemetry] = useState<FeedsTelemetryMetrics | null>(null);
   const [articles, setArticles] = useState<BlogArticle[]>([]);
   const [blogMetrics, setBlogMetrics] = useState<BlogModerationMetrics | null>(null);
+  const [financials, setFinancials] = useState<SaaSFinancialMetrics | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Estados de Modais e Impersonation
@@ -63,7 +67,7 @@ export function App() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [m, t, l, f, ft, a, bm] = await Promise.all([
+      const [m, t, l, f, ft, a, bm, fin] = await Promise.all([
         tenantService.getOverviewMetrics(),
         tenantService.listTenants(),
         auditLogService.listLogs(),
@@ -71,6 +75,7 @@ export function App() {
         feedMonitoringService.getTelemetryMetrics(),
         blogModerationService.listArticles(),
         blogModerationService.getMetrics(),
+        saasMetricsService.getFinancialMetrics(),
       ]);
       setMetrics(m);
       setTenants(t);
@@ -79,6 +84,7 @@ export function App() {
       setFeedsTelemetry(ft);
       setArticles(a);
       setBlogMetrics(bm);
+      setFinancials(fin);
     } finally {
       setLoading(false);
     }
@@ -409,27 +415,18 @@ export function App() {
               </div>
             )}
 
-            {/* TAB 4: AUDIT LOGS */}
+            {/* TAB 4: FATURAMENTO & MRR (ISSUE #5) */}
+            {activeTab === 'financials' && financials && (
+              <SaaSFinancialsDashboard data={financials} />
+            )}
+
+            {/* TAB 5: AUDIT LOGS */}
             {activeTab === 'audit-logs' && (
               <AuditLogsTable
                 logs={auditLogs}
                 onRefresh={loadData}
                 loading={loading}
               />
-            )}
-
-            {/* OUTRAS ABAS */}
-            {activeTab === 'financials' && (
-              <Card className="p-12 text-center text-sm text-typography-muted space-y-2">
-                <Sparkles className="w-8 h-8 text-brand-primary mx-auto" />
-                <p className="font-bold text-typography-heading">Faturamento & MRR em Operação Contínua</p>
-                <p className="text-xs">
-                  Os dados de receita recorrente (R$ 84.500/mês) estão sincronizados com a tabela de concessionárias.
-                </p>
-                <Button variant="outline" size="sm" onClick={() => setActiveTab('tenants')}>
-                  Voltar para Gestão de Tenants
-                </Button>
-              </Card>
             )}
           </main>
         </div>
