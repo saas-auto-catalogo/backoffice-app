@@ -1,0 +1,351 @@
+import { useState, useEffect } from 'react';
+import { SuperAdminSidebar } from './components/layout/SuperAdminSidebar.js';
+import { SuperAdminHeader } from './components/layout/SuperAdminHeader.js';
+import { MetricCard } from './components/ui/MetricCard.js';
+import { TenantsTable } from './components/tenants/TenantsTable.js';
+import { ImpersonateModal } from './components/tenants/ImpersonateModal.js';
+import { ImpersonateBanner } from './components/tenants/ImpersonateBanner.js';
+import { AuditLogsTable } from './components/audit/AuditLogsTable.js';
+import { Card, CardHeader, CardContent } from './components/ui/Card.js';
+import { Badge } from './components/ui/Badge.js';
+import { Button } from './components/ui/Button.js';
+import {
+  DollarSign,
+  Building2,
+  Car,
+  Activity,
+  GitBranch,
+  Sparkles,
+  RotateCw,
+  FileCheck2,
+  Check,
+  X
+} from 'lucide-react';
+import { tenantService } from './services/api/tenantService.js';
+import { auditLogService } from './services/api/auditLogService.js';
+import { Tenant, SaaSOverviewMetrics, AuditLog } from './types/backoffice.js';
+
+export function App() {
+  const [activeTab, setActiveTab] = useState<string>('tenants');
+  const [metrics, setMetrics] = useState<SaaSOverviewMetrics | null>(null);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  // Estado de Impersonation
+  const [impersonateModalTenant, setImpersonateModalTenant] = useState<Tenant | null>(null);
+  const [activeImpersonation, setActiveImpersonation] = useState<Tenant | null>(null);
+  const [isImpersonating, setIsImpersonating] = useState<boolean>(false);
+  const [isSyncingAll, setIsSyncingAll] = useState<boolean>(false);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [m, t, l] = await Promise.all([
+        tenantService.getOverviewMetrics(),
+        tenantService.listTenants(),
+        auditLogService.listLogs(),
+      ]);
+      setMetrics(m);
+      setTenants(t);
+      setAuditLogs(l);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleStartImpersonate = async (tenant: Tenant, reason: string) => {
+    try {
+      setIsImpersonating(true);
+      await tenantService.impersonateTenant(tenant.id, reason);
+      setActiveImpersonation(tenant);
+      setImpersonateModalTenant(null);
+
+      // Recarrega logs de auditoria
+      const updatedLogs = await auditLogService.listLogs();
+      setAuditLogs(updatedLogs);
+
+      alert(`🔑 Sessão de Impersonation iniciada com sucesso na conta '${tenant.tradeName}'! Ação registrada na auditoria.`);
+    } finally {
+      setIsImpersonating(false);
+    }
+  };
+
+  const handleExitImpersonate = async () => {
+    if (!activeImpersonation) return;
+    await tenantService.endImpersonation(activeImpersonation.id);
+    setActiveImpersonation(null);
+
+    const updatedLogs = await auditLogService.listLogs();
+    setAuditLogs(updatedLogs);
+
+    alert('🔒 Sessão de Impersonation encerrada com sucesso.');
+  };
+
+  const handleForceGlobalSync = async () => {
+    try {
+      setIsSyncingAll(true);
+      const res = await tenantService.forceGlobalSync();
+      const updatedLogs = await auditLogService.listLogs();
+      setAuditLogs(updatedLogs);
+      alert(`🔄 ${res.message}`);
+    } finally {
+      setIsSyncingAll(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-surface-canvas text-typography-body">
+      {/* Banner de Impersonation Fixo no Topo se ativo */}
+      {activeImpersonation && (
+        <ImpersonateBanner
+          tenant={activeImpersonation}
+          onExit={handleExitImpersonate}
+        />
+      )}
+
+      <div className="flex-1 flex min-h-screen">
+        {/* Sidebar Master Ops (Deep Cobalt Blue) */}
+        <SuperAdminSidebar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+        />
+
+        {/* Área Principal de Conteúdo */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Header Superior com Busca e Status dos Workers */}
+          <SuperAdminHeader
+            onForceSyncAll={handleForceGlobalSync}
+            isSyncingAll={isSyncingAll}
+          />
+
+          <main className="flex-1 p-6 space-y-6 max-w-7xl w-full mx-auto">
+            {/* 1. KPIs EXECUTIVOS SAAS (4 Cards do Mockup Stitch) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <MetricCard
+                title="MRR Total Contratado"
+                value={
+                  metrics?.mrrTotal
+                    ? metrics.mrrTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                    : 'R$ 84.500'
+                }
+                change="+12.4% MoM"
+                changeType="positive"
+                subtitle="Faturamento recorrente mensal"
+                icon={<DollarSign className="w-5 h-5 text-brand-price" />}
+                highlightPrice
+              />
+
+              <MetricCard
+                title="Concessionárias Ativas"
+                value={metrics?.activeTenantsCount ?? 128}
+                change="98.4% uptime"
+                changeType="positive"
+                subtitle="Tenants com feeds sincronizados"
+                icon={<Building2 className="w-5 h-5 text-brand-primary" />}
+              />
+
+              <MetricCard
+                title="Veículos Indexados"
+                value={
+                  metrics?.totalVehiclesIndexed
+                    ? metrics.totalVehiclesIndexed.toLocaleString('pt-BR')
+                    : '18.420'
+                }
+                change="+340 hoje"
+                changeType="positive"
+                subtitle="Catálogo ativo Meta Automotive DAA"
+                icon={<Car className="w-5 h-5 text-brand-accent" />}
+              />
+
+              <MetricCard
+                title="Taxa de Sucesso Ingestão"
+                value={`${metrics?.xmlSuccessRate ?? 99.92}%`}
+                change="142ms méd."
+                changeType="positive"
+                subtitle="8 Workers Redis / BullMQ ativos"
+                icon={<Activity className="w-5 h-5 text-brand-primary" />}
+              />
+            </div>
+
+            {/* TAB 1: GESTÃO DE TENANTS (PRINCIPAL) */}
+            {activeTab === 'tenants' && (
+              <div className="space-y-6">
+                <TenantsTable
+                  tenants={tenants}
+                  onImpersonate={(tenant) => setImpersonateModalTenant(tenant)}
+                  onRefresh={loadData}
+                  loading={loading}
+                />
+
+                {/* Grid Inferior: Telemetria de Workers (6 cols) + Fila de Moderação IA (6 cols) */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  {/* Telemetria de Pipelines & Jobs XML */}
+                  <div className="lg:col-span-6">
+                    <Card>
+                      <CardHeader className="flex items-center justify-between py-4 bg-surface-muted/30">
+                        <div className="flex items-center gap-2">
+                          <GitBranch className="w-4 h-4 text-brand-primary" />
+                          <h3 className="text-sm font-bold text-typography-heading">
+                            Telemetria de Ingestão DMS (Tempo Real)
+                          </h3>
+                        </div>
+                        <Badge variant="available" size="sm" dot>
+                          Zero Latência
+                        </Badge>
+                      </CardHeader>
+
+                      <CardContent className="p-4 space-y-3">
+                        <div className="space-y-2 text-xs">
+                          <div className="flex items-center justify-between p-2.5 rounded-lg bg-surface-muted/50 border border-surface-border">
+                            <div>
+                              <p className="font-bold text-typography-heading">AutoCerto XML Batch #4910</p>
+                              <p className="text-[11px] text-typography-muted">142 veículos processados • 186ms</p>
+                            </div>
+                            <Badge variant="available" size="sm">Sucesso 100%</Badge>
+                          </div>
+
+                          <div className="flex items-center justify-between p-2.5 rounded-lg bg-surface-muted/50 border border-surface-border">
+                            <div>
+                              <p className="font-bold text-typography-heading">Altimus Hub Batch #4909</p>
+                              <p className="text-[11px] text-typography-muted">380 veículos processados • 240ms</p>
+                            </div>
+                            <Badge variant="available" size="sm">Sucesso 100%</Badge>
+                          </div>
+
+                          <div className="flex items-center justify-between p-2.5 rounded-lg bg-surface-muted/50 border border-surface-border">
+                            <div>
+                              <p className="font-bold text-typography-heading">Sisvag DMS Stream #4908</p>
+                              <p className="text-[11px] text-typography-muted">89 veículos processados • 112ms</p>
+                            </div>
+                            <Badge variant="amber" size="sm">4 Alertas</Badge>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 flex justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            icon={<RotateCw className="w-3.5 h-3.5" />}
+                            onClick={handleForceGlobalSync}
+                          >
+                            Re-executar Pipeline
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* Fila Rápida de Moderação AI Blog */}
+                  <div className="lg:col-span-6">
+                    <Card>
+                      <CardHeader className="flex items-center justify-between py-4 bg-surface-muted/30">
+                        <div className="flex items-center gap-2">
+                          <FileCheck2 className="w-4 h-4 text-purple-600" />
+                          <h3 className="text-sm font-bold text-typography-heading">
+                            Fila de Moderação AI Blog (3 Pendentes)
+                          </h3>
+                        </div>
+                        <Badge variant="purple" size="sm">
+                          Audience First
+                        </Badge>
+                      </CardHeader>
+
+                      <CardContent className="p-4 space-y-2.5">
+                        <div className="p-3 rounded-lg bg-surface-muted/50 border border-surface-border flex items-center justify-between gap-3 text-xs">
+                          <div className="min-w-0">
+                            <p className="font-bold text-typography-heading truncate">
+                              Como anunciar carros no Instagram usando Feed XML Automotivo
+                            </p>
+                            <p className="text-[11px] text-typography-muted">SEO Score: 98/100 • 1.450 palavras</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              onClick={() => alert('Artigo aprovado e publicado com sucesso!')}
+                              className="p-1.5 rounded bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
+                              title="Aprovar Artigo"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => alert('Artigo rejeitado para reescrita.')}
+                              className="p-1.5 rounded bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
+                              title="Rejeitar Artigo"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="p-3 rounded-lg bg-surface-muted/50 border border-surface-border flex items-center justify-between gap-3 text-xs">
+                          <div className="min-w-0">
+                            <p className="font-bold text-typography-heading truncate">
+                              Guia Definitivo do Meta Automotive Inventory Ads (DAA) em 2026
+                            </p>
+                            <p className="text-[11px] text-typography-muted">SEO Score: 96/100 • 2.100 palavras</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              onClick={() => alert('Artigo aprovado e publicado com sucesso!')}
+                              className="p-1.5 rounded bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
+                              title="Aprovar Artigo"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => alert('Artigo rejeitado para reescrita.')}
+                              className="p-1.5 rounded bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
+                              title="Rejeitar Artigo"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: AUDIT LOGS */}
+            {activeTab === 'audit-logs' && (
+              <AuditLogsTable
+                logs={auditLogs}
+                onRefresh={loadData}
+                loading={loading}
+              />
+            )}
+
+            {/* OUTRAS ABAS */}
+            {(activeTab === 'pipelines' || activeTab === 'financials' || activeTab === 'ai-moderation') && (
+              <Card className="p-12 text-center text-sm text-typography-muted space-y-2">
+                <Sparkles className="w-8 h-8 text-brand-primary mx-auto" />
+                <p className="font-bold text-typography-heading">Módulo em Operação Contínua</p>
+                <p className="text-xs">
+                  Os dados deste módulo são integrados em tempo real na visão unificada de Tenants e Auditoria.
+                </p>
+                <Button variant="outline" size="sm" onClick={() => setActiveTab('tenants')}>
+                  Voltar para Gestão de Tenants
+                </Button>
+              </Card>
+            )}
+          </main>
+        </div>
+      </div>
+
+      {/* Modal de Impersonation Seguro */}
+      <ImpersonateModal
+        tenant={impersonateModalTenant}
+        isOpen={!!impersonateModalTenant}
+        onClose={() => setImpersonateModalTenant(null)}
+        onConfirm={handleStartImpersonate}
+        isLoading={isImpersonating}
+      />
+    </div>
+  );
+}
