@@ -9,6 +9,8 @@ import { AuditLogsTable } from './components/audit/AuditLogsTable.js';
 import { FeedHealthOverview } from './components/feeds/FeedHealthOverview.js';
 import { FeedMonitoringTable } from './components/feeds/FeedMonitoringTable.js';
 import { FeedDiagnosticModal } from './components/feeds/FeedDiagnosticModal.js';
+import { BlogModerationQueue } from './components/blog-moderation/BlogModerationQueue.js';
+import { ArticleReviewEditorModal } from './components/blog-moderation/ArticleReviewEditorModal.js';
 import { Card, CardHeader, CardContent } from './components/ui/Card.js';
 import { Badge } from './components/ui/Badge.js';
 import { Button } from './components/ui/Button.js';
@@ -27,8 +29,10 @@ import {
 import { tenantService } from './services/api/tenantService.js';
 import { auditLogService } from './services/api/auditLogService.js';
 import { feedMonitoringService } from './services/api/feedMonitoringService.js';
+import { blogModerationService } from './services/api/blogModerationService.js';
 import { Tenant, SaaSOverviewMetrics, AuditLog } from './types/backoffice.js';
 import { MonitoredFeed, FeedsTelemetryMetrics } from './types/feedMonitoring.js';
+import { BlogArticle, BlogModerationMetrics } from './types/blogModeration.js';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<string>('tenants');
@@ -37,6 +41,8 @@ export function App() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [feeds, setFeeds] = useState<MonitoredFeed[]>([]);
   const [feedsTelemetry, setFeedsTelemetry] = useState<FeedsTelemetryMetrics | null>(null);
+  const [articles, setArticles] = useState<BlogArticle[]>([]);
+  const [blogMetrics, setBlogMetrics] = useState<BlogModerationMetrics | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Estados de Modais e Impersonation
@@ -45,26 +51,34 @@ export function App() {
   const [isImpersonating, setIsImpersonating] = useState<boolean>(false);
   const [isSyncingAll, setIsSyncingAll] = useState<boolean>(false);
 
-  // Estados de Diagnóstico de Feeds
+  // Estados de Feeds
   const [selectedDiagnosticFeed, setSelectedDiagnosticFeed] = useState<MonitoredFeed | null>(null);
   const [isSyncingFeed, setIsSyncingFeed] = useState<boolean>(false);
   const [isSyncingBatch, setIsSyncingBatch] = useState<boolean>(false);
 
+  // Estados de Moderação de Blog
+  const [selectedReviewArticle, setSelectedReviewArticle] = useState<BlogArticle | null>(null);
+  const [isProcessingArticle, setIsProcessingArticle] = useState<boolean>(false);
+
   const loadData = async () => {
     try {
       setLoading(true);
-      const [m, t, l, f, ft] = await Promise.all([
+      const [m, t, l, f, ft, a, bm] = await Promise.all([
         tenantService.getOverviewMetrics(),
         tenantService.listTenants(),
         auditLogService.listLogs(),
         feedMonitoringService.listFeeds(),
         feedMonitoringService.getTelemetryMetrics(),
+        blogModerationService.listArticles(),
+        blogModerationService.getMetrics(),
       ]);
       setMetrics(m);
       setTenants(t);
       setAuditLogs(l);
       setFeeds(f);
       setFeedsTelemetry(ft);
+      setArticles(a);
+      setBlogMetrics(bm);
     } finally {
       setLoading(false);
     }
@@ -81,7 +95,6 @@ export function App() {
       setActiveImpersonation(tenant);
       setImpersonateModalTenant(null);
 
-      // Recarrega logs de auditoria
       const updatedLogs = await auditLogService.listLogs();
       setAuditLogs(updatedLogs);
 
@@ -135,6 +148,30 @@ export function App() {
       alert(`🔄 ${res.message}`);
     } finally {
       setIsSyncingBatch(false);
+    }
+  };
+
+  const handleApproveArticle = async (article: BlogArticle) => {
+    try {
+      setIsProcessingArticle(true);
+      const res = await blogModerationService.approveAndPublish(article.id);
+      await loadData();
+      setSelectedReviewArticle(null);
+      alert(`🎉 ${res.message}`);
+    } finally {
+      setIsProcessingArticle(false);
+    }
+  };
+
+  const handleRejectArticle = async (article: BlogArticle, reason: string) => {
+    try {
+      setIsProcessingArticle(true);
+      const res = await blogModerationService.rejectArticle(article.id, reason);
+      await loadData();
+      setSelectedReviewArticle(null);
+      alert(`⚠️ ${res.message}`);
+    } finally {
+      setIsProcessingArticle(false);
     }
   };
 
@@ -285,7 +322,7 @@ export function App() {
                         <div className="flex items-center gap-2">
                           <FileCheck2 className="w-4 h-4 text-purple-600" />
                           <h3 className="text-sm font-bold text-typography-heading">
-                            Fila de Moderação AI Blog (3 Pendentes)
+                            Fila de Moderação AI Blog ({blogMetrics?.pendingCount ?? 3} Pendentes)
                           </h3>
                         </div>
                         <Badge variant="purple" size="sm">
@@ -294,54 +331,45 @@ export function App() {
                       </CardHeader>
 
                       <CardContent className="p-4 space-y-2.5">
-                        <div className="p-3 rounded-lg bg-surface-muted/50 border border-surface-border flex items-center justify-between gap-3 text-xs">
-                          <div className="min-w-0">
-                            <p className="font-bold text-typography-heading truncate">
-                              Como anunciar carros no Instagram usando Feed XML Automotivo
-                            </p>
-                            <p className="text-[11px] text-typography-muted">SEO Score: 98/100 • 1.450 palavras</p>
+                        {articles.filter((a) => a.status === 'PENDING_APPROVAL').slice(0, 2).map((art) => (
+                          <div
+                            key={art.id}
+                            className="p-3 rounded-lg bg-surface-muted/50 border border-surface-border flex items-center justify-between gap-3 text-xs"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-bold text-typography-heading truncate">{art.title}</p>
+                              <p className="text-[11px] text-typography-muted">
+                                SEO Score: {art.seoScore}/100 • {art.wordCount} palavras
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                onClick={() => handleApproveArticle(art)}
+                                className="p-1.5 rounded bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
+                                title="Aprovar Artigo"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => handleRejectArticle(art, 'Rejeitado pelo SuperAdmin na fila rápida.')}
+                                className="p-1.5 rounded bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
+                                title="Rejeitar Artigo"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                              onClick={() => alert('Artigo aprovado e publicado com sucesso!')}
-                              className="p-1.5 rounded bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
-                              title="Aprovar Artigo"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => alert('Artigo rejeitado para reescrita.')}
-                              className="p-1.5 rounded bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
-                              title="Rejeitar Artigo"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
+                        ))}
 
-                        <div className="p-3 rounded-lg bg-surface-muted/50 border border-surface-border flex items-center justify-between gap-3 text-xs">
-                          <div className="min-w-0">
-                            <p className="font-bold text-typography-heading truncate">
-                              Guia Definitivo do Meta Automotive Inventory Ads (DAA) em 2026
-                            </p>
-                            <p className="text-[11px] text-typography-muted">SEO Score: 96/100 • 2.100 palavras</p>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                              onClick={() => alert('Artigo aprovado e publicado com sucesso!')}
-                              className="p-1.5 rounded bg-green-50 text-green-700 hover:bg-green-100 border border-green-200"
-                              title="Aprovar Artigo"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => alert('Artigo rejeitado para reescrita.')}
-                              className="p-1.5 rounded bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
-                              title="Rejeitar Artigo"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                        <div className="pt-2 flex justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            icon={<Sparkles className="w-3.5 h-3.5 text-purple-600" />}
+                            onClick={() => setActiveTab('ai-moderation')}
+                          >
+                            Abrir Central de Moderação
+                          </Button>
                         </div>
                       </CardContent>
                     </Card>
@@ -367,7 +395,21 @@ export function App() {
               </div>
             )}
 
-            {/* TAB 3: AUDIT LOGS */}
+            {/* TAB 3: MODERAÇÃO DE CONTEÚDO AI DO BLOG (ISSUE #4) */}
+            {activeTab === 'ai-moderation' && (
+              <div className="space-y-6">
+                <BlogModerationQueue
+                  articles={articles}
+                  onReviewArticle={(art) => setSelectedReviewArticle(art)}
+                  onQuickApprove={handleApproveArticle}
+                  onQuickReject={(art) => handleRejectArticle(art, 'Rejeitado para reprocessamento.')}
+                  onRefresh={loadData}
+                  loading={loading}
+                />
+              </div>
+            )}
+
+            {/* TAB 4: AUDIT LOGS */}
             {activeTab === 'audit-logs' && (
               <AuditLogsTable
                 logs={auditLogs}
@@ -377,12 +419,12 @@ export function App() {
             )}
 
             {/* OUTRAS ABAS */}
-            {(activeTab === 'financials' || activeTab === 'ai-moderation') && (
+            {activeTab === 'financials' && (
               <Card className="p-12 text-center text-sm text-typography-muted space-y-2">
                 <Sparkles className="w-8 h-8 text-brand-primary mx-auto" />
-                <p className="font-bold text-typography-heading">Módulo em Operação Contínua</p>
+                <p className="font-bold text-typography-heading">Faturamento & MRR em Operação Contínua</p>
                 <p className="text-xs">
-                  Os dados deste módulo são integrados em tempo real na visão unificada de Tenants e Auditoria.
+                  Os dados de receita recorrente (R$ 84.500/mês) estão sincronizados com a tabela de concessionárias.
                 </p>
                 <Button variant="outline" size="sm" onClick={() => setActiveTab('tenants')}>
                   Voltar para Gestão de Tenants
@@ -409,6 +451,16 @@ export function App() {
         onClose={() => setSelectedDiagnosticFeed(null)}
         onReSync={handleReSyncSingleFeed}
         isSyncing={isSyncingFeed}
+      />
+
+      {/* Modal de Revisão & Editor de Artigo AI */}
+      <ArticleReviewEditorModal
+        article={selectedReviewArticle}
+        isOpen={!!selectedReviewArticle}
+        onClose={() => setSelectedReviewArticle(null)}
+        onApprove={handleApproveArticle}
+        onReject={handleRejectArticle}
+        isProcessing={isProcessingArticle}
       />
     </div>
   );
