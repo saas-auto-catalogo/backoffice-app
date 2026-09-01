@@ -6,6 +6,9 @@ import { TenantsTable } from './components/tenants/TenantsTable.js';
 import { ImpersonateModal } from './components/tenants/ImpersonateModal.js';
 import { ImpersonateBanner } from './components/tenants/ImpersonateBanner.js';
 import { AuditLogsTable } from './components/audit/AuditLogsTable.js';
+import { FeedHealthOverview } from './components/feeds/FeedHealthOverview.js';
+import { FeedMonitoringTable } from './components/feeds/FeedMonitoringTable.js';
+import { FeedDiagnosticModal } from './components/feeds/FeedDiagnosticModal.js';
 import { Card, CardHeader, CardContent } from './components/ui/Card.js';
 import { Badge } from './components/ui/Badge.js';
 import { Button } from './components/ui/Button.js';
@@ -23,32 +26,45 @@ import {
 } from 'lucide-react';
 import { tenantService } from './services/api/tenantService.js';
 import { auditLogService } from './services/api/auditLogService.js';
+import { feedMonitoringService } from './services/api/feedMonitoringService.js';
 import { Tenant, SaaSOverviewMetrics, AuditLog } from './types/backoffice.js';
+import { MonitoredFeed, FeedsTelemetryMetrics } from './types/feedMonitoring.js';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<string>('tenants');
   const [metrics, setMetrics] = useState<SaaSOverviewMetrics | null>(null);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [feeds, setFeeds] = useState<MonitoredFeed[]>([]);
+  const [feedsTelemetry, setFeedsTelemetry] = useState<FeedsTelemetryMetrics | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Estado de Impersonation
+  // Estados de Modais e Impersonation
   const [impersonateModalTenant, setImpersonateModalTenant] = useState<Tenant | null>(null);
   const [activeImpersonation, setActiveImpersonation] = useState<Tenant | null>(null);
   const [isImpersonating, setIsImpersonating] = useState<boolean>(false);
   const [isSyncingAll, setIsSyncingAll] = useState<boolean>(false);
 
+  // Estados de Diagnóstico de Feeds
+  const [selectedDiagnosticFeed, setSelectedDiagnosticFeed] = useState<MonitoredFeed | null>(null);
+  const [isSyncingFeed, setIsSyncingFeed] = useState<boolean>(false);
+  const [isSyncingBatch, setIsSyncingBatch] = useState<boolean>(false);
+
   const loadData = async () => {
     try {
       setLoading(true);
-      const [m, t, l] = await Promise.all([
+      const [m, t, l, f, ft] = await Promise.all([
         tenantService.getOverviewMetrics(),
         tenantService.listTenants(),
         auditLogService.listLogs(),
+        feedMonitoringService.listFeeds(),
+        feedMonitoringService.getTelemetryMetrics(),
       ]);
       setMetrics(m);
       setTenants(t);
       setAuditLogs(l);
+      setFeeds(f);
+      setFeedsTelemetry(ft);
     } finally {
       setLoading(false);
     }
@@ -90,11 +106,35 @@ export function App() {
     try {
       setIsSyncingAll(true);
       const res = await tenantService.forceGlobalSync();
-      const updatedLogs = await auditLogService.listLogs();
-      setAuditLogs(updatedLogs);
+      await loadData();
       alert(`🔄 ${res.message}`);
     } finally {
       setIsSyncingAll(false);
+    }
+  };
+
+  const handleReSyncSingleFeed = async (feed: MonitoredFeed) => {
+    try {
+      setIsSyncingFeed(true);
+      const res = await feedMonitoringService.triggerFeedSync(feed.id);
+      await loadData();
+      alert(`🔄 ${res.message} (Latência: ${res.durationMs}ms)`);
+      if (selectedDiagnosticFeed?.id === feed.id) {
+        setSelectedDiagnosticFeed(null);
+      }
+    } finally {
+      setIsSyncingFeed(false);
+    }
+  };
+
+  const handleReSyncBatchFeeds = async (feedIds: string[]) => {
+    try {
+      setIsSyncingBatch(true);
+      const res = await feedMonitoringService.triggerBatchSync(feedIds);
+      await loadData();
+      alert(`🔄 ${res.message}`);
+    } finally {
+      setIsSyncingBatch(false);
     }
   };
 
@@ -172,7 +212,7 @@ export function App() {
               />
             </div>
 
-            {/* TAB 1: GESTÃO DE TENANTS (PRINCIPAL) */}
+            {/* TAB 1: GESTÃO DE TENANTS */}
             {activeTab === 'tenants' && (
               <div className="space-y-6">
                 <TenantsTable
@@ -182,9 +222,8 @@ export function App() {
                   loading={loading}
                 />
 
-                {/* Grid Inferior: Telemetria de Workers (6 cols) + Fila de Moderação IA (6 cols) */}
+                {/* Grid Inferior: Telemetria de Workers + Fila de Moderação IA */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                  {/* Telemetria de Pipelines & Jobs XML */}
                   <div className="lg:col-span-6">
                     <Card>
                       <CardHeader className="flex items-center justify-between py-4 bg-surface-muted/30">
@@ -231,16 +270,15 @@ export function App() {
                             variant="outline"
                             size="sm"
                             icon={<RotateCw className="w-3.5 h-3.5" />}
-                            onClick={handleForceGlobalSync}
+                            onClick={() => setActiveTab('pipelines')}
                           >
-                            Re-executar Pipeline
+                            Abrir Monitor de Feeds
                           </Button>
                         </div>
                       </CardContent>
                     </Card>
                   </div>
 
-                  {/* Fila Rápida de Moderação AI Blog */}
                   <div className="lg:col-span-6">
                     <Card>
                       <CardHeader className="flex items-center justify-between py-4 bg-surface-muted/30">
@@ -312,7 +350,24 @@ export function App() {
               </div>
             )}
 
-            {/* TAB 2: AUDIT LOGS */}
+            {/* TAB 2: PIPELINES & CRON JOBS XML (ISSUE #3) */}
+            {activeTab === 'pipelines' && (
+              <div className="space-y-6">
+                {feedsTelemetry && <FeedHealthOverview metrics={feedsTelemetry} />}
+
+                <FeedMonitoringTable
+                  feeds={feeds}
+                  onOpenDiagnostic={(feed) => setSelectedDiagnosticFeed(feed)}
+                  onReSyncSingle={handleReSyncSingleFeed}
+                  onReSyncBatch={handleReSyncBatchFeeds}
+                  onRefresh={loadData}
+                  loading={loading}
+                  isSyncingBatch={isSyncingBatch}
+                />
+              </div>
+            )}
+
+            {/* TAB 3: AUDIT LOGS */}
             {activeTab === 'audit-logs' && (
               <AuditLogsTable
                 logs={auditLogs}
@@ -322,7 +377,7 @@ export function App() {
             )}
 
             {/* OUTRAS ABAS */}
-            {(activeTab === 'pipelines' || activeTab === 'financials' || activeTab === 'ai-moderation') && (
+            {(activeTab === 'financials' || activeTab === 'ai-moderation') && (
               <Card className="p-12 text-center text-sm text-typography-muted space-y-2">
                 <Sparkles className="w-8 h-8 text-brand-primary mx-auto" />
                 <p className="font-bold text-typography-heading">Módulo em Operação Contínua</p>
@@ -345,6 +400,15 @@ export function App() {
         onClose={() => setImpersonateModalTenant(null)}
         onConfirm={handleStartImpersonate}
         isLoading={isImpersonating}
+      />
+
+      {/* Modal de Diagnóstico Avançado de Feed XML */}
+      <FeedDiagnosticModal
+        feed={selectedDiagnosticFeed}
+        isOpen={!!selectedDiagnosticFeed}
+        onClose={() => setSelectedDiagnosticFeed(null)}
+        onReSync={handleReSyncSingleFeed}
+        isSyncing={isSyncingFeed}
       />
     </div>
   );
