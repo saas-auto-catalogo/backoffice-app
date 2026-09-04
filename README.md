@@ -1,4 +1,6 @@
-# SaaS Auto Catálogo — Backoffice App (Super Admin)
+# SaaS Auto Catálogo — Backoffice App (Super Admin)
+
+[![CI](https://github.com/saas-auto-catalogo/backoffice-app/actions/workflows/ci.yml/badge.svg)](https://github.com/saas-auto-catalogo/backoffice-app/actions/workflows/ci.yml)
 
 Painel operacional exclusivo da equipe SaaS: suporte a clientes, governança de tenants, telemetria de feeds e moderação de conteúdo IA.
 
