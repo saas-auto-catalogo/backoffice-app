@@ -1,4 +1,4 @@
-# SaaS Auto Catálogo — Backoffice App (Super Admin)
+# DriveSync — Backoffice App (Super Admin)
 
 [![CI](https://github.com/saas-auto-catalogo/backoffice-app/actions/workflows/ci.yml/badge.svg)](https://github.com/saas-auto-catalogo/backoffice-app/actions/workflows/ci.yml)
 

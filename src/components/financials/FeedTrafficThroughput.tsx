@@ -31,7 +31,7 @@ export function FeedTrafficThroughput({
               <span>Volumetria Global de Requisições aos Feeds XML</span>
             </h3>
             <p className="text-xs text-slate-300 leading-relaxed">
-              O ecossistema do Auto Catálogo responde diariamente a milhões de consultas originadas pelos robôs de catálogo do Instagram e Facebook para atualização de anúncios dinâmicos.
+              O ecossistema do DriveSync responde diariamente a milhões de consultas originadas pelos robôs de catálogo do Instagram e Facebook para atualização de anúncios dinâmicos.
             </p>
           </div>
 

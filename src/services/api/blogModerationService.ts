@@ -26,9 +26,9 @@ A solução definitiva adotada pelas maiores redes de concessionárias do Brasil
 
 ---
 
-### Como Começar com o Auto Catálogo SaaS
+### Como Começar com o DriveSync SaaS
 
-O **Auto Catálogo** normaliza automaticamente as tags do seu integrador DMS para o padrão canônico exigido pela Meta, garantindo 100% de conformidade com o schema XSD sem necessidade de programador.`,
+O **DriveSync** normaliza automaticamente as tags do seu integrador DMS para o padrão canônico exigido pela Meta, garantindo 100% de conformidade com o schema XSD sem necessidade de programador.`,
     category: 'META_ADS',
     seoScore: 98,
     focusKeyword: 'feed xml automotivo instagram',
@@ -64,7 +64,7 @@ Diferente de e-commerces tradicionais, o DAA compreende os atributos intrínseco
 - Identificador canônico único (\`<g:vehicle_id>\`).
 - Preço numérico formatado com moeda (\`BRL\`).
 
-Adote o **Auto Catálogo SaaS** e automatize a validação do seu catálogo em minutos.`,
+Adote o **DriveSync SaaS** e automatize a validação do seu catálogo em minutos.`,
     category: 'DEALERSHIP_MARKETING',
     seoScore: 96,
     focusKeyword: 'meta automotive inventory ads daa',
@@ -89,7 +89,7 @@ Essa frustração destrói o ROI da campanha e diminui a credibilidade da marca.
 
 ---
 
-### Como o Auto Catálogo SaaS Resolve Isso:
+### Como o DriveSync SaaS Resolve Isso:
 
 Com nosso motor de ingestão em tempo real, qualquer baixa no DMS (AutoCerto, Altimus, BomControle) atualiza o feed da Meta em minutos, garantindo que apenas veículos disponíveis estejam ativos nas campanhas.`,
     category: 'LEAD_CONVERSION',
@@ -112,7 +112,7 @@ Com nosso motor de ingestão em tempo real, qualquer baixa no DMS (AutoCerto, Al
 
 Cada gestor de estoque automotivo adota uma estrutura de tags XML diferente. O AutoCerto utiliza tags em português com prefixos específicos, enquanto o Altimus utiliza nós resumidos e o Sisvag adota nomenclaturas legadas.
 
-Neste artigo, detalhamos como a camada de normalização do **Auto Catálogo** traduz cada formato para o padrão oficial do Facebook e Instagram.`,
+Neste artigo, detalhamos como a camada de normalização do **DriveSync** traduz cada formato para o padrão oficial do Facebook e Instagram.`,
     category: 'XML_FEEDS',
     seoScore: 99,
     focusKeyword: 'integracao xml autocerto altimus sisvag meta',
@@ -178,7 +178,7 @@ export const blogModerationService = {
 
   async approveAndPublish(
     articleId: string,
-    adminEmail: string = 'fabio.oliveira@autocatalogo.com.br'
+    adminEmail: string = 'fabio.oliveira@drivesync.me'
   ): Promise<{ success: boolean; message: string }> {
     const article = MOCK_ARTICLES.find((a) => a.id === articleId);
     if (article) {
@@ -209,7 +209,7 @@ export const blogModerationService = {
   async rejectArticle(
     articleId: string,
     reason: string,
-    adminEmail: string = 'fabio.oliveira@autocatalogo.com.br'
+    adminEmail: string = 'fabio.oliveira@drivesync.me'
   ): Promise<{ success: boolean; message: string }> {
     const article = MOCK_ARTICLES.find((a) => a.id === articleId);
     if (article) {
