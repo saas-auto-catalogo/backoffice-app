@@ -225,7 +225,7 @@ export const feedMonitoringService = {
 
   async triggerFeedSync(
     feedId: string,
-    adminEmail: string = 'fabio.oliveira@autocatalogo.com.br'
+    adminEmail: string = 'fabio.oliveira@drivesync.me'
   ): Promise<{ success: boolean; message: string; durationMs: number }> {
     const feed = MOCK_FEEDS.find((f) => f.id === feedId);
 
@@ -258,7 +258,7 @@ export const feedMonitoringService = {
 
   async triggerBatchSync(
     feedIds: string[],
-    adminEmail: string = 'fabio.oliveira@autocatalogo.com.br'
+    adminEmail: string = 'fabio.oliveira@drivesync.me'
   ): Promise<{ success: boolean; message: string; processedCount: number }> {
     await auditLogService.logAction({
       adminEmail,

@@ -101,7 +101,7 @@ export function LoginPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@autocatalogo.com.br"
+                placeholder="admin@drivesync.me"
                 className={`w-full text-sm px-3 py-2.5 bg-white border rounded-lg text-typography-heading placeholder:text-typography-subtle focus:outline-none focus:ring-2 focus:ring-brand-primary transition-all ${
                   fieldErrors.email ? 'border-brand-price' : 'border-surface-border'
                 }`}
@@ -144,7 +144,7 @@ export function LoginPage() {
         </div>
 
         <p className="text-center text-[11px] text-blue-300/60 mt-6 font-mono">
-          SaaS Auto Catálogo • Super Admin Console
+          DriveSync • Super Admin Console
         </p>
       </div>
     </div>

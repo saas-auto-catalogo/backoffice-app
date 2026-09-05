@@ -194,7 +194,7 @@ export const tenantService = {
   async impersonateTenant(
     tenantId: string,
     reason: string,
-    adminEmail: string = 'fabio.oliveira@autocatalogo.com.br'
+    adminEmail: string = 'fabio.oliveira@drivesync.me'
   ): Promise<{ impersonationToken: string; redirectUrl: string }> {
     const tenant = FALLBACK_TENANTS.find((t) => t.id === tenantId);
 
@@ -222,7 +222,7 @@ export const tenantService = {
 
   async endImpersonation(
     tenantId: string,
-    adminEmail: string = 'fabio.oliveira@autocatalogo.com.br'
+    adminEmail: string = 'fabio.oliveira@drivesync.me'
   ): Promise<void> {
     const tenant = FALLBACK_TENANTS.find((t) => t.id === tenantId);
     await auditLogService.logAction({
@@ -238,7 +238,7 @@ export const tenantService = {
 
   async forceGlobalSync(): Promise<{ success: boolean; message: string }> {
     await auditLogService.logAction({
-      adminEmail: 'fabio.oliveira@autocatalogo.com.br',
+      adminEmail: 'fabio.oliveira@drivesync.me',
       adminName: 'Fabio Oliveira (Super Admin)',
       action: 'FORCE_GLOBAL_SYNC',
       reason: 'Disparo forçado de re-sync em lote para todas as 128 concessionárias.',

@@ -4,7 +4,7 @@ import { AuditLog } from '../../types/backoffice.js';
 const IN_MEMORY_LOGS: AuditLog[] = [
   {
     id: 'log-001',
-    adminEmail: 'fabio.oliveira@autocatalogo.com.br',
+    adminEmail: 'fabio.oliveira@drivesync.me',
     adminName: 'Fabio Oliveira (Super Admin)',
     action: 'FORCE_GLOBAL_SYNC',
     reason: 'Rotina de validação matinal de pipelines DMS.',
@@ -13,7 +13,7 @@ const IN_MEMORY_LOGS: AuditLog[] = [
   },
   {
     id: 'log-002',
-    adminEmail: 'suporte@autocatalogo.com.br',
+    adminEmail: 'suporte@drivesync.me',
     adminName: 'Lucas Matos (Suporte N2)',
     action: 'IMPERSONATE_START',
     targetTenantId: 'tenant-localiza-cwb-003',
@@ -24,7 +24,7 @@ const IN_MEMORY_LOGS: AuditLog[] = [
   },
   {
     id: 'log-003',
-    adminEmail: 'suporte@autocatalogo.com.br',
+    adminEmail: 'suporte@drivesync.me',
     adminName: 'Lucas Matos (Suporte N2)',
     action: 'IMPERSONATE_END',
     targetTenantId: 'tenant-localiza-cwb-003',
@@ -35,7 +35,7 @@ const IN_MEMORY_LOGS: AuditLog[] = [
   },
   {
     id: 'log-004',
-    adminEmail: 'fabio.oliveira@autocatalogo.com.br',
+    adminEmail: 'fabio.oliveira@drivesync.me',
     adminName: 'Fabio Oliveira (Super Admin)',
     action: 'PLAN_UPGRADE',
     targetTenantId: 'tenant-itavema-rio-005',
