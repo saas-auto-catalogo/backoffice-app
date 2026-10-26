@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent } from '../ui/Card.js';
 import { Button } from '../ui/Button.js';
-import { ShieldCheck, AlertTriangle, X, Lock } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, X, Lock, ShieldAlert } from 'lucide-react';
 import { Tenant } from '../../types/backoffice.js';
 
 export interface ImpersonateModalProps {
@@ -10,7 +10,16 @@ export interface ImpersonateModalProps {
   onClose: () => void;
   onConfirm: (tenant: Tenant, reason: string) => void;
   isLoading?: boolean;
+  errorMessage?: string | null;
 }
+
+const PRESET_REASONS = [
+  'Suporte Técnico / Auditoria de Feed Meta XML',
+  'Ajuste de Mapeamento De/Para do Integrador DMS',
+  'Diagnóstico de Erros de Sincronização Meta Ads',
+  'Verificação de Onboarding e Ativação do Catálogo',
+  'Outro (Descrever motivo específico abaixo)',
+];
 
 export function ImpersonateModal({
   tenant,
@@ -18,16 +27,41 @@ export function ImpersonateModal({
   onClose,
   onConfirm,
   isLoading = false,
+  errorMessage,
 }: ImpersonateModalProps) {
-  const [reason, setReason] = useState('Suporte Técnico / Auditoria de Feed Meta XML');
+  const [selectedPreset, setSelectedPreset] = useState<string>(PRESET_REASONS[0]);
+  const [reason, setReason] = useState<string>(PRESET_REASONS[0]);
   const [agreed, setAgreed] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedPreset(PRESET_REASONS[0]);
+      setReason(PRESET_REASONS[0]);
+      setAgreed(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen || !tenant) return null;
 
+  const trimmedReason = reason.trim();
+  const isReasonValid = trimmedReason.length >= 10;
+  const isMfaError =
+    Boolean(errorMessage && (errorMessage.includes('MFA') || errorMessage.includes('2FA')));
+
+  const handlePresetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    setSelectedPreset(val);
+    if (val === 'Outro (Descrever motivo específico abaixo)') {
+      setReason('');
+    } else {
+      setReason(val);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!agreed || !reason.trim()) return;
-    onConfirm(tenant, reason);
+    if (!agreed || !isReasonValid || isLoading) return;
+    onConfirm(tenant, trimmedReason);
   };
 
   return (
@@ -57,6 +91,31 @@ export function ImpersonateModal({
         </CardHeader>
 
         <CardContent className="p-6 space-y-4">
+          {/* Alerta de Erro de MFA ou Geral */}
+          {errorMessage && (
+            <div
+              className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
+                isMfaError
+                  ? 'bg-red-50 border-red-300 text-red-900'
+                  : 'bg-amber-50 border-amber-300 text-amber-900'
+              }`}
+            >
+              <div className="flex items-center gap-2 font-bold">
+                <ShieldAlert className="w-4 h-4 shrink-0 text-red-600" />
+                <span>
+                  {isMfaError
+                    ? 'Autenticação de Dois Fatores (MFA/2FA) Obrigatória'
+                    : 'Atenção ao Iniciar Sessão'}
+                </span>
+              </div>
+              <p className="text-[11px] leading-relaxed">
+                {isMfaError
+                  ? 'É obrigatório ter a autenticação de dois fatores (MFA/2FA) ativada para iniciar sessões de impersonation por motivos de conformidade e segurança. Por favor, ative o MFA em seu perfil antes de prosseguir.'
+                  : errorMessage}
+              </p>
+            </div>
+          )}
+
           {/* Dados do Tenant Alvo */}
           <div className="p-3.5 rounded-xl bg-surface-muted/60 border border-surface-border space-y-1.5 text-xs">
             <div className="flex items-center justify-between">
@@ -92,16 +151,34 @@ export function ImpersonateModal({
                 Justificativa Operacional do Acesso <span className="text-brand-price">*</span>
               </label>
               <select
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
+                value={selectedPreset}
+                onChange={handlePresetChange}
                 className="w-full text-xs px-3 py-2 bg-white border border-surface-border rounded-lg text-typography-heading focus:outline-none focus:ring-2 focus:ring-brand-primary mb-2 font-medium"
               >
-                <option value="Suporte Técnico / Auditoria de Feed Meta XML">Suporte Técnico / Auditoria de Feed Meta XML</option>
-                <option value="Ajuste de Mapeamento De/Para do Integrador DMS">Ajuste de Mapeamento De/Para do Integrador DMS</option>
-                <option value="Diagnóstico de Erros de Sincronização Meta Ads">Diagnóstico de Erros de Sincronização Meta Ads</option>
-                <option value="Verificação de Onboarding e Ativação do Catálogo">Verificação de Onboarding e Ativação do Catálogo</option>
-                <option value="Outro (Especificar)">Outro (Especificar na auditoria)</option>
+                {PRESET_REASONS.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
               </select>
+
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Descreva o motivo do suporte..."
+                rows={3}
+                className={`w-full text-xs p-3 bg-white border rounded-lg text-typography-heading focus:outline-none focus:ring-2 font-medium transition-colors ${
+                  !isReasonValid && trimmedReason.length > 0
+                    ? 'border-red-400 focus:ring-red-400'
+                    : 'border-surface-border focus:ring-brand-primary'
+                }`}
+              />
+
+              {!isReasonValid && (
+                <p className="text-[11px] text-red-600 mt-1 font-medium">
+                  Mínimo de 10 caracteres para a justificativa ({trimmedReason.length}/10).
+                </p>
+              )}
             </div>
 
             <label className="flex items-start gap-2.5 cursor-pointer text-xs select-none">
@@ -125,11 +202,11 @@ export function ImpersonateModal({
                 type="submit"
                 variant="primary"
                 size="md"
-                disabled={!agreed || isLoading}
+                disabled={!agreed || !isReasonValid || isLoading}
                 loading={isLoading}
                 icon={<ShieldCheck className="w-4 h-4" />}
               >
-                Iniciar Sessão de Impersonation
+                {isLoading ? 'Iniciando...' : 'Iniciar Sessão de Impersonation'}
               </Button>
             </div>
           </form>

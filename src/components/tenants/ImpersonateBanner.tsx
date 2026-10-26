@@ -1,13 +1,22 @@
 import { ShieldAlert, LogOut, ExternalLink } from 'lucide-react';
 import { Button } from '../ui/Button.js';
 import { Tenant } from '../../types/backoffice.js';
+import { env } from '../../config/env.js';
 
 export interface ImpersonateBannerProps {
   tenant: Tenant;
+  token?: string;
   onExit: () => void;
 }
 
-export function ImpersonateBanner({ tenant, onExit }: ImpersonateBannerProps) {
+export function ImpersonateBanner({ tenant, token, onExit }: ImpersonateBannerProps) {
+  const effectiveToken = token || tenant.feedToken;
+  const targetUrl = `${env.tenantAppUrl}/?impersonate_token=${effectiveToken}`;
+
+  const handleOpenFrontend = () => {
+    window.open(targetUrl, '_blank');
+  };
+
   return (
     <div className="bg-amber-500 text-slate-950 px-6 py-2.5 flex items-center justify-between shadow-md select-none sticky top-0 z-50 border-b border-amber-600 animate-fadeIn">
       <div className="flex items-center gap-3">
@@ -26,8 +35,8 @@ export function ImpersonateBanner({ tenant, onExit }: ImpersonateBannerProps) {
 
       <div className="flex items-center gap-3">
         <button
-          onClick={() => window.open(`http://localhost:5173/?impersonate_token=${tenant.feedToken}`, '_blank')}
-          className="text-xs font-bold underline hover:text-black flex items-center gap-1"
+          onClick={handleOpenFrontend}
+          className="text-xs font-bold underline hover:text-black flex items-center gap-1 cursor-pointer"
         >
           <span>Abrir Frontend do Lojista</span>
           <ExternalLink className="w-3.5 h-3.5" />
@@ -38,7 +47,7 @@ export function ImpersonateBanner({ tenant, onExit }: ImpersonateBannerProps) {
           size="sm"
           icon={<LogOut className="w-3.5 h-3.5" />}
           onClick={onExit}
-          className="bg-slate-950 text-white hover:bg-slate-900 border-none font-bold"
+          className="bg-slate-950 text-white hover:bg-slate-900 border-none font-bold cursor-pointer"
         >
           Encerrar Impersonation
         </Button>

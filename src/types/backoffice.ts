@@ -24,13 +24,36 @@ export interface Tenant {
   lastSyncAt: string;
 }
 
+export type WorkspaceMemberRole = 'OWNER' | 'MANAGER' | 'VIEWER';
+export type WorkspaceMemberStatus = 'ACTIVE' | 'PENDING' | 'DISABLED';
+
+export interface WorkspaceMember {
+  id: string;
+  userId?: string;
+  name: string;
+  email: string;
+  role: WorkspaceMemberRole;
+  status: WorkspaceMemberStatus;
+  joinedAt: string;
+  lastActiveAt?: string;
+}
+
+export interface InviteMemberPayload {
+  email: string;
+  role: WorkspaceMemberRole;
+  name?: string;
+}
+
 export type AuditAction =
   | 'IMPERSONATE_START'
   | 'IMPERSONATE_END'
   | 'FORCE_GLOBAL_SYNC'
   | 'TENANT_STATUS_CHANGE'
   | 'PLAN_UPGRADE'
-  | 'FEED_RESET';
+  | 'FEED_RESET'
+  | 'MEMBER_INVITE'
+  | 'MEMBER_ROLE_CHANGE'
+  | 'MEMBER_REMOVE';
 
 export interface AuditLog {
   id: string;
@@ -39,6 +62,8 @@ export interface AuditLog {
   action: AuditAction;
   targetTenantId?: string;
   targetTenantName?: string;
+  targetMemberId?: string;
+  targetMemberEmail?: string;
   reason: string;
   ipAddress: string;
   userAgent?: string;

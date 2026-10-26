@@ -11,13 +11,15 @@ import {
   CheckCircle2,
   AlertTriangle,
   XCircle,
-  Clock
+  Clock,
+  Users
 } from 'lucide-react';
 import { Tenant } from '../../types/backoffice.js';
 
 export interface TenantsTableProps {
   tenants: Tenant[];
   onImpersonate: (tenant: Tenant) => void;
+  onManageMembers?: (tenant: Tenant) => void;
   onRefresh?: () => void;
   loading?: boolean;
 }
@@ -25,6 +27,7 @@ export interface TenantsTableProps {
 export function TenantsTable({
   tenants,
   onImpersonate,
+  onManageMembers,
   onRefresh,
   loading = false,
 }: TenantsTableProps) {
@@ -233,15 +236,27 @@ export function TenantsTable({
 
                   {/* Ação de Impersonation */}
                   <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      icon={<KeyRound className="w-3.5 h-3.5" />}
-                      onClick={() => onImpersonate(tenant)}
-                      className="shadow-sm"
-                    >
-                      Acessar como Lojista
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                      {onManageMembers && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          icon={<Users className="w-3.5 h-3.5" />}
+                          onClick={() => onManageMembers(tenant)}
+                        >
+                          Membros
+                        </Button>
+                      )}
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        icon={<KeyRound className="w-3.5 h-3.5" />}
+                        onClick={() => onImpersonate(tenant)}
+                        className="shadow-sm"
+                      >
+                        Acessar como Lojista
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}

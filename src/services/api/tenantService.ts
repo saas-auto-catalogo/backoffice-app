@@ -1,8 +1,10 @@
 import { httpClient } from './httpClient.js';
 import { Tenant, SaaSOverviewMetrics } from '../../types/backoffice.js';
 import { auditLogService } from './auditLogService.js';
+import { impersonationService } from './impersonationService.js';
+import { env } from '../../config/env.js';
 
-const FALLBACK_TENANTS: Tenant[] = [
+export const FALLBACK_TENANTS: Tenant[] = [
   {
     id: 'tenant-auto-elite-001',
     name: 'Auto Elite Motors Ltda',
@@ -209,15 +211,11 @@ export const tenantService = {
       ipAddress: '189.40.122.95 (São Paulo / BR)',
     });
 
-    try {
-      const res = await httpClient.post('/admin/impersonate', { tenantId, reason }, { timeout: 5000 });
-      return res;
-    } catch {
-      return {
-        impersonationToken: `imp_tok_${tenantId}_${Date.now()}`,
-        redirectUrl: `http://localhost:5173/?impersonate_token=imp_tok_${tenantId}`,
-      };
-    }
+    const res = await impersonationService.startImpersonation(tenantId, reason);
+    return {
+      impersonationToken: res.accessToken,
+      redirectUrl: `${env.tenantAppUrl}/?impersonate_token=${res.accessToken}`,
+    };
   },
 
   async endImpersonation(
@@ -234,6 +232,7 @@ export const tenantService = {
       reason: 'Sessão de impersonação e suporte encerrada pelo Super Admin.',
       ipAddress: '189.40.122.95 (São Paulo / BR)',
     });
+    await impersonationService.endImpersonation();
   },
 
   async forceGlobalSync(): Promise<{ success: boolean; message: string }> {

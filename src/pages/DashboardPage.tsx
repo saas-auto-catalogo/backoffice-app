@@ -5,6 +5,7 @@ import { MetricCard } from '../components/ui/MetricCard.js';
 import { TenantsTable } from '../components/tenants/TenantsTable.js';
 import { ImpersonateModal } from '../components/tenants/ImpersonateModal.js';
 import { ImpersonateBanner } from '../components/tenants/ImpersonateBanner.js';
+import { WorkspaceMembersPanel } from '../components/tenants/WorkspaceMembersPanel.js';
 import { AuditLogsTable } from '../components/audit/AuditLogsTable.js';
 import { FeedHealthOverview } from '../components/feeds/FeedHealthOverview.js';
 import { FeedMonitoringTable } from '../components/feeds/FeedMonitoringTable.js';
@@ -28,7 +29,9 @@ import {
   X
 } from 'lucide-react';
 import { tenantService } from '../services/api/tenantService.js';
+import { impersonationService } from '../services/api/impersonationService.js';
 import { auditLogService } from '../services/api/auditLogService.js';
+import { env } from '../config/env.js';
 import { feedMonitoringService } from '../services/api/feedMonitoringService.js';
 import { blogModerationService } from '../services/api/blogModerationService.js';
 import { saasMetricsService } from '../services/api/saasMetricsService.js';
@@ -50,7 +53,10 @@ export function DashboardPage() {
   const [loading, setLoading] = useState<boolean>(true);
 
   const [impersonateModalTenant, setImpersonateModalTenant] = useState<Tenant | null>(null);
+  const [membersPanelTenant, setMembersPanelTenant] = useState<Tenant | null>(null);
   const [activeImpersonation, setActiveImpersonation] = useState<Tenant | null>(null);
+  const [impersonateToken, setImpersonateToken] = useState<string | null>(null);
+  const [impersonateError, setImpersonateError] = useState<string | null>(null);
   const [isImpersonating, setIsImpersonating] = useState<boolean>(false);
   const [isSyncingAll, setIsSyncingAll] = useState<boolean>(false);
 
@@ -94,14 +100,22 @@ export function DashboardPage() {
   const handleStartImpersonate = async (tenant: Tenant, reason: string) => {
     try {
       setIsImpersonating(true);
-      await tenantService.impersonateTenant(tenant.id, reason);
+      setImpersonateError(null);
+      const res = await impersonationService.startImpersonation(tenant.id, reason);
       setActiveImpersonation(tenant);
+      setImpersonateToken(res.accessToken);
       setImpersonateModalTenant(null);
+
+      // Abre frontend do lojista com o token em nova aba
+      const targetUrl = `${env.tenantAppUrl}/?impersonate_token=${res.accessToken}`;
+      window.open(targetUrl, '_blank');
 
       const updatedLogs = await auditLogService.listLogs();
       setAuditLogs(updatedLogs);
 
-      alert(`🔑 Sessão de Impersonation iniciada com sucesso na conta '${tenant.tradeName}'! Ação registrada na auditoria.`);
+      alert(`🔑 Sessão de Impersonation iniciada com sucesso na conta '${tenant.tradeName}'! Redirecionamento aberto em nova aba.`);
+    } catch (err: any) {
+      setImpersonateError(err.message || 'Falha ao iniciar sessão de impersonation.');
     } finally {
       setIsImpersonating(false);
     }
@@ -109,13 +123,22 @@ export function DashboardPage() {
 
   const handleExitImpersonate = async () => {
     if (!activeImpersonation) return;
-    await tenantService.endImpersonation(activeImpersonation.id);
-    setActiveImpersonation(null);
+    try {
+      await impersonationService.endImpersonation();
+    } catch (err: any) {
+      console.warn('Erro ao encerrar impersonation no backend:', err);
+    } finally {
+      setActiveImpersonation(null);
+      setImpersonateToken(null);
+      const updatedLogs = await auditLogService.listLogs();
+      setAuditLogs(updatedLogs);
+      alert('🔒 Sessão de Impersonation encerrada com sucesso.');
+    }
+  };
 
+  const handleRefreshAuditLogs = async () => {
     const updatedLogs = await auditLogService.listLogs();
     setAuditLogs(updatedLogs);
-
-    alert('🔒 Sessão de Impersonation encerrada com sucesso.');
   };
 
   const handleForceGlobalSync = async () => {
@@ -183,6 +206,7 @@ export function DashboardPage() {
       {activeImpersonation && (
         <ImpersonateBanner
           tenant={activeImpersonation}
+          token={impersonateToken ?? undefined}
           onExit={handleExitImpersonate}
         />
       )}
@@ -252,6 +276,7 @@ export function DashboardPage() {
                 <TenantsTable
                   tenants={tenants}
                   onImpersonate={(tenant) => setImpersonateModalTenant(tenant)}
+                  onManageMembers={(tenant) => setMembersPanelTenant(tenant)}
                   onRefresh={loadData}
                   loading={loading}
                 />
@@ -421,9 +446,13 @@ export function DashboardPage() {
       <ImpersonateModal
         tenant={impersonateModalTenant}
         isOpen={!!impersonateModalTenant}
-        onClose={() => setImpersonateModalTenant(null)}
+        onClose={() => {
+          setImpersonateModalTenant(null);
+          setImpersonateError(null);
+        }}
         onConfirm={handleStartImpersonate}
         isLoading={isImpersonating}
+        errorMessage={impersonateError}
       />
 
       <FeedDiagnosticModal
@@ -441,6 +470,14 @@ export function DashboardPage() {
         onApprove={handleApproveArticle}
         onReject={handleRejectArticle}
         isProcessing={isProcessingArticle}
+      />
+
+      <WorkspaceMembersPanel
+        tenant={membersPanelTenant}
+        isOpen={!!membersPanelTenant}
+        onClose={() => setMembersPanelTenant(null)}
+        onImpersonate={(tenant) => setImpersonateModalTenant(tenant)}
+        onRefreshAudit={handleRefreshAuditLogs}
       />
     </div>
   );
